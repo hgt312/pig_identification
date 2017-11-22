@@ -1,7 +1,7 @@
 from keras.applications.inception_resnet_v2 import InceptionResNetV2
 from keras.layers import Dense
 from keras.models import Model
-from keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
 
 from utils import get_nb_files
@@ -66,5 +66,13 @@ model.fit_generator(
     epochs=epochs,
     validation_data=dev_generator,
     validation_steps=276,
-    callbacks=[TensorBoard(log_dir='./log')])
+    callbacks=[TensorBoard(log_dir='./log'),
+               ModelCheckpoint('./models/pig.hdf5',
+                               monitor='val_loss',
+                               verbose=1,
+                               save_best_only=True,
+                               save_weights_only=False,
+                               mode='auto',
+                               period=1)
+               ])
 model.save_weights('/media/hgt/share2/jdd/try_time_1st.h5')
