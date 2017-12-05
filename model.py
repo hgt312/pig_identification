@@ -1,7 +1,8 @@
 from keras.applications.inception_resnet_v2 import InceptionResNetV2, preprocess_input
-from keras.layers import Dense
+from keras.layers.core import Dropout, Dense
 from keras.models import Model, load_model
-from keras import optimizers, regularizers
+from keras.initializers import he_normal, glorot_normal
+from keras import optimizers
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -19,7 +20,7 @@ nb_val_samples = get_nb_files(dev_dir)       # 验证集样本个数
 batch_size = 128
 epochs = 100
 steps_per_epoch = int(nb_train_samples / batch_size)
-optimizer = optimizers.SGD(lr=0.01, momentum=0.0, decay=0.0, nesterov=False)
+optimizer = optimizers.SGD(lr=0.02)
 
 # cnn部分，使用了inception resnet v2
 # pooling参数: 'max'/'avg'/None
@@ -28,12 +29,14 @@ base_model = InceptionResNetV2(
 
 # 全连接层以及分类输出
 x = base_model.output
-x = Dense(1024, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)
-predictions = Dense(30, activation='softmax')(x)
+x = Dense(1024, activation='relu', kernel_initializer=he_normal())(x)
+x = Dropout(0.5)(x)
+predictions = Dense(30, activation='softmax', kernel_initializer=glorot_normal())(x)
 
 # 定义模型
 model = Model(inputs=base_model.input, outputs=predictions)
-for layer in base_model.layers:
+for layer in base_model.layers[:-4]:
+    # print(layer)
     layer.trainable = False
 
 # 编译模型及选择优化方法
@@ -41,7 +44,9 @@ model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['ac
 
 train_datagen = ImageDataGenerator(
     preprocessing_function=preprocess_input,
-    horizontal_flip=True)
+    horizontal_flip=True,
+    rotation_range=30,
+    fill_mode='nearest')
 
 dev_datagen = ImageDataGenerator(
     preprocessing_function=preprocess_input,)
@@ -59,7 +64,7 @@ dev_generator = dev_datagen.flow_from_directory(
     class_mode='categorical')
 
 
-model.load_weights('./models/pig_1127_3.hdf5')
+# model.load_weights('./models/pig_1205_1.hdf5')
 # 训练模型
 model.fit_generator(
     train_generator,
@@ -68,7 +73,7 @@ model.fit_generator(
     validation_data=dev_generator,
     validation_steps=276,
     callbacks=[TensorBoard(log_dir='./log'),
-               ModelCheckpoint('./models/pig_1128_1.hdf5',
+               ModelCheckpoint('./models/pig_1205_1.hdf5',
                                monitor='val_loss',
                                verbose=1,
                                save_best_only=True,
@@ -76,4 +81,4 @@ model.fit_generator(
                                mode='auto',
                                period=1)
                ],
-    initial_epoch=100)
+    initial_epoch=10)
